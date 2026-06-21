@@ -1,4 +1,5 @@
 from django import forms
+
 from .models import Project
 
 
@@ -20,6 +21,6 @@ class ProjectForm(forms.ModelForm):
         if not url:
             return url
         if not url.startswith(('http://github.com', 'https://github.com',
-                                'http://www.github.com', 'https://www.github.com')):
+                               'http://www.github.com', 'https://www.github.com')):
             raise forms.ValidationError('Ссылка должна вести на GitHub.')
         return url

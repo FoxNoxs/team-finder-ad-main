@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+
 from .models import User
 
 
@@ -12,8 +13,10 @@ class UserAdmin(BaseUserAdmin):
 
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Личная информация', {'fields': ('name', 'surname', 'avatar', 'phone', 'github_url', 'about')}),
-        ('Права', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Личная информация', {
+         'fields': ('name', 'surname', 'avatar', 'phone', 'github_url', 'about')}),
+        ('Права', {'fields': ('is_active', 'is_staff',
+         'is_superuser', 'groups', 'user_permissions')}),
         ('Избранное', {'fields': ('favorites',)}),
     )
     add_fieldsets = (

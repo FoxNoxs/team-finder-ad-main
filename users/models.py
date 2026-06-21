@@ -1,90 +1,58 @@
-import io
-import random
-from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from PIL import Image, ImageDraw, ImageFont
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.core.files.base import ContentFile
+from django.db import models
+
+from .managers import UserManager
+from .utils import AVATAR_DEFAULT_LETTER, generate_avatar
 
 
-class UserManager(BaseUserManager):
-    """Менеджер для создания пользователей."""
+USER_NAME_MAX_LENGTH = 124
+USER_SURNAME_MAX_LENGTH = 124
+USER_PHONE_MAX_LENGTH = 12
+USER_ABOUT_MAX_LENGTH = 256
 
-    def create_user(self, email, name, surname, password=None, **extra_fields):
-        if not email:
-            raise ValueError('Email обязателен')
-        email = self.normalize_email(email)
-        user = self.model(email=email, name=name, surname=surname, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
+AVATAR_UPLOAD_DIR = 'avatars/'
+AVATAR_FILENAME_TEMPLATE = 'avatar_{username}.png'
+EMAIL_LOCAL_PART_INDEX = 0
+EMAIL_SEPARATOR = '@'
 
-    def create_superuser(self, email, name, surname, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        return self.create_user(email, name, surname, password, **extra_fields)
-
-
-def generate_avatar(letter):
-    """Генерирует аватарку с первой буквой имени."""
-    colors = [
-        (100, 149, 237),
-        (144, 238, 144),
-        (255, 182, 193),
-        (255, 165, 79),
-        (147, 112, 219),
-        (64, 224, 208),
-        (135, 206, 235),
-    ]
-    bg_color = random.choice(colors)
-    size = 200
-
-    img = Image.new('RGB', (size, size), color=bg_color)
-    draw = ImageDraw.Draw(img)
-
-    try:
-        font = ImageFont.truetype('static/fonts/Raleway-Regular.ttf', size=100)
-    except Exception:
-        font = ImageFont.load_default(size=100)
-
-    letter = letter.upper()
-    bbox = draw.textbbox((0, 0), letter, font=font)
-    text_width = bbox[2] - bbox[0]
-    text_height = bbox[3] - bbox[1]
-    x = (size - text_width) / 2 - bbox[0]
-    y = (size - text_height) / 2 - bbox[1]
-    draw.text((x, y), letter, fill=(255, 255, 255), font=font)
-
-    output = io.BytesIO()
-    img.save(output, format='PNG')
-    output.seek(0)
-    return output
+PROJECT_MODEL_REF = 'projects.Project'
 
 
 class User(AbstractBaseUser, PermissionsMixin):
     """Кастомная модель пользователя."""
 
     email = models.EmailField(unique=True, verbose_name='Email')
-    name = models.CharField(max_length=124, verbose_name='Имя')
-    surname = models.CharField(max_length=124, verbose_name='Фамилия')
+    name = models.CharField(
+        max_length=USER_NAME_MAX_LENGTH,
+        verbose_name='Имя',
+    )
+    surname = models.CharField(
+        max_length=USER_SURNAME_MAX_LENGTH,
+        verbose_name='Фамилия',
+    )
     avatar = models.ImageField(
-        upload_to='avatars/',
+        upload_to=AVATAR_UPLOAD_DIR,
         verbose_name='Аватар',
         blank=True,
     )
     phone = models.CharField(
-        max_length=12,
+        max_length=USER_PHONE_MAX_LENGTH,
         verbose_name='Телефон',
         blank=True,
         default='',
     )
     github_url = models.URLField(blank=True, verbose_name='GitHub')
-    about = models.TextField(max_length=256, blank=True, verbose_name='О себе')
+    about = models.TextField(
+        max_length=USER_ABOUT_MAX_LENGTH,
+        blank=True,
+        verbose_name='О себе',
+    )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
-    # Вариант 1 — избранные проекты
     favorites = models.ManyToManyField(
-        'projects.Project',
+        PROJECT_MODEL_REF,
         blank=True,
         related_name='interested_users',
         verbose_name='Избранные проекты',
@@ -105,9 +73,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     def save(self, *args, **kwargs):
         """Генерируем аватарку при создании нового пользователя."""
         if not self.pk and not self.avatar:
-            letter = self.name[0] if self.name else 'U'
+            letter = self.name[0] if self.name else AVATAR_DEFAULT_LETTER
             avatar_io = generate_avatar(letter)
-            filename = f'avatar_{self.email.split("@")[0]}.png'
+            username = self.email.split(EMAIL_SEPARATOR)[
+                EMAIL_LOCAL_PART_INDEX]
+            filename = AVATAR_FILENAME_TEMPLATE.format(username=username)
             self.avatar.save(
                 filename,
                 ContentFile(avatar_io.read()),

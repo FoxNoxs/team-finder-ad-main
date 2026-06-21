@@ -9,7 +9,7 @@ SECRET_KEY = config("DJANGO_SECRET_KEY")
 
 DEBUG = config("DJANGO_DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -34,7 +34,6 @@ AUTHENTICATION_BACKENDS = [
 LOGIN_URL = '/users/login/'
 LOGIN_REDIRECT_URL = '/projects/list/'
 LOGOUT_REDIRECT_URL = '/projects/list/'
-
 
 
 MIDDLEWARE = [
